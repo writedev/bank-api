@@ -43,7 +43,6 @@ class BankAccount(Base):
         "User",
         back_populates="bank_accounts",
         foreign_keys="BankAccount.owner_id",
-        default=None,
         init=False,
     )
 
@@ -55,7 +54,6 @@ class BankAccount(Base):
         "Transaction",
         back_populates="sender",
         foreign_keys="Transaction.sender_id",
-        default=None,
         init=False,
     )
 
@@ -63,7 +61,6 @@ class BankAccount(Base):
         "Transaction",
         back_populates="receiver",
         foreign_keys="Transaction.receiver_id",
-        default=None,
         init=False,
     )
 
@@ -91,7 +88,6 @@ class Transaction(Base):
         "BankAccount",
         back_populates="sent_transactions",
         foreign_keys="Transaction.sender_id",
-        default=None,
         init=False,
     )
 
@@ -99,7 +95,6 @@ class Transaction(Base):
         "BankAccount",
         back_populates="received_transactions",
         foreign_keys="Transaction.receiver_id",
-        default=None,
         init=False,
     )
 

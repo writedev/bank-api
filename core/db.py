@@ -8,7 +8,7 @@ class Base(DeclarativeBase, MappedAsDataclass):
 
 
 engine = create_async_engine(
-    "postgresql+asyncpg://postgres:example@localhost:5432/postgres", echo=True
+    "postgresql+asyncpg://postgres:example@localhost:5432/postgres", echo=False
 )
 
 AsyncSessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
