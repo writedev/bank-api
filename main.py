@@ -1,19 +1,19 @@
+import uvicorn
 from asyncpg.exceptions import CheckViolationError
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
+from pwdlib import PasswordHash
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.db import AsyncSessionLocal
+from app.auth import router
+from core.db import AsyncSessionLocal, get_db
 from core.tables import BankAccount, Transaction, User
 
 app = FastAPI()
 
-
-async def get_db():
-    async with AsyncSessionLocal() as db:
-        yield db
+app.include_router(router)
 
 
 class CreateBanckAccount(BaseModel):
@@ -27,13 +27,18 @@ class Transfer(BaseModel):
     amount: float
 
 
-@app.post("/db/create_user")
-async def create_user(db: AsyncSession = Depends(get_db)):
-    async with db.begin():
-        user = User(first_name="John", last_name="Doe", email="2Xx0F@example.com")
-        db.add(user)
+# @app.post("/db/create_user")
+# async def create_user(db: AsyncSession = Depends(get_db)):
+#     async with db.begin():
+#         user = User(
+#             first_name="John",
+#             last_name="Doe",
+#             email="2Xx0F@example.com",
+#             password="password",
+#         )
+#         db.add(user)
 
-    return JSONResponse(content={"id": user.id}, status_code=201)
+#     return JSONResponse(content={"id": user.id}, status_code=201)
 
 
 @app.post("/db/create_bank_account")
@@ -78,3 +83,9 @@ async def transfer(content: Transfer, db: AsyncSession = Depends(get_db)):
         if "sender_receiver_not_equal" in str(e.orig):
             error_message = "Sender and receiver cannot be the same."
             return JSONResponse(content={"error": error_message}, status_code=400)
+
+    except Exception as e:
+        error_message = str(e)
+        print(e)
+        return JSONResponse(content={"error": error_message}, status_code=400)
+

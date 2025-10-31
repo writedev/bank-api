@@ -6,16 +6,23 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.db import Base, engine
 
+###########################################################################
+
 
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(unique=True, primary_key=True, init=False)
 
-    first_name: Mapped[str] = mapped_column(String(50), nullable=True)
-    last_name: Mapped[str] = mapped_column(String(50), nullable=True)
+    first_name: Mapped[str | None] = mapped_column(
+        String(50), nullable=True, index=True
+    )
+    last_name: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
 
     email: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(
+        String(128), nullable=False, index=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         index=True, server_default=func.now(), init=False
@@ -103,7 +110,7 @@ class Transaction(Base):
     )
 
 
-# for create the tables in postgres db
+# for create and drop the tables in postgres db
 
 
 async def create_tables():
