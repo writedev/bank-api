@@ -7,12 +7,12 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
+from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from pwdlib import PasswordHash
 from sqlalchemy import select
 
 from core.db import AsyncSession, get_db
-from core.models import CreateAccountModel, LoginModel, Token, TokenData
+from core.models import CreateUserModel, LoginModel, Token, TokenData
 from core.tables import User
 
 router = APIRouter(
@@ -20,7 +20,6 @@ router = APIRouter(
     tags=["auth"],
     responses={404: {"description": "Not found"}},
 )
-
 # openssl rand -hex 32
 SECRET_KEY = "1ca858931ea16a60933560ecaff28e641b10388659fea88070287d7c3c49ba0c"
 ALGORITHM = "HS256"
@@ -53,7 +52,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-async def get_current_user(
+async def auth_current_user(
     token: Annotated[str, Depends(oauth2_scheme)], db: AsyncSession = Depends(get_db)
 ):
     """Authenticates a user by email.Return a User object."""
@@ -96,6 +95,7 @@ async def auth_required(
         if email is None:
             raise credentials_exception
         token_data = TokenData(email=email)
+
     except InvalidTokenError:
         raise credentials_exception
     async with db.begin():
@@ -108,9 +108,7 @@ async def auth_required(
 
 
 @router.post("/create_account")
-async def create_account(
-    content: CreateAccountModel, db: AsyncSession = Depends(get_db)
-):
+async def create_account(content: CreateUserModel, db: AsyncSession = Depends(get_db)):
 
     password_hash = get_password_hash(password=content.password)
     async with db.begin():
@@ -164,5 +162,11 @@ async def login_for_access_token(
 
 @router.get("/login")
 async def login(is_authenticated: Annotated[bool, Depends(auth_required)]):
+    """Authenticates a user by email."""
+    return JSONResponse(content={"content": "You are authenticated"}, status_code=202)
+
+
+@router.get("/test")
+async def test():
     """Authenticates a user by email."""
     return JSONResponse(content={"content": "You are authenticated"}, status_code=202)

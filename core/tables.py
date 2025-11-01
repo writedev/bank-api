@@ -25,7 +25,7 @@ class User(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        index=True, server_default=func.now(), init=False
+        index=True, server_default=func.now(), default=None, init=False
     )
 
     bank_accounts: Mapped[list["BankAccount"]] = relationship(
