@@ -1,10 +1,24 @@
+from __future__ import annotations
+
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, Column, Float, ForeignKey, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+import nanoid
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    event,
+    func,
+    select,
+)
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped, Session, UOWTransaction, mapped_column, relationship
 
-from core.db import Base, engine
+from core.db import AsyncSessionLocal, Base, engine, sync_maker
 
 ###########################################################################
 
@@ -14,10 +28,8 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(unique=True, primary_key=True, init=False)
 
-    first_name: Mapped[str | None] = mapped_column(
-        String(50), nullable=True, index=True
-    )
-    last_name: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    first_name: Mapped[str] = mapped_column(String(50), index=True)
+    last_name: Mapped[str] = mapped_column(String(50), index=True)
 
     email: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(
@@ -28,7 +40,7 @@ class User(Base):
         index=True, server_default=func.now(), default=None, init=False
     )
 
-    bank_accounts: Mapped[list["BankAccount"]] = relationship(
+    bank_accounts: Mapped[list[BankAccount]] = relationship(
         "BankAccount",
         back_populates="owner_accounts",
         foreign_keys="BankAccount.owner_id",
@@ -39,13 +51,20 @@ class User(Base):
 ###########################################################################
 
 
+def readable_id():
+    return f"BCC-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{nanoid.generate(size=5)}"
+
+
 class BankAccount(Base):
     __tablename__ = "bank_accounts"
 
-    id: Mapped[int] = mapped_column(unique=True, primary_key=True, init=False)
+    id: Mapped[str] = mapped_column(
+        String(40), primary_key=True, init=False, default=readable_id
+    )
     balance: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), default=None)
+
     owner_accounts: Mapped[User] = relationship(
         "User",
         back_populates="bank_accounts",
@@ -53,18 +72,22 @@ class BankAccount(Base):
         init=False,
     )
 
+    name: Mapped[str] = mapped_column(
+        String(128), nullable=False, index=True, default=None
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         index=True, server_default=func.now(), default=None, init=False
     )
 
-    sent_transactions: Mapped[list["Transaction"]] = relationship(
+    sent_transactions: Mapped[list[Transaction]] = relationship(
         "Transaction",
         back_populates="sender",
         foreign_keys="Transaction.sender_id",
         init=False,
     )
 
-    received_transactions: Mapped[list["Transaction"]] = relationship(
+    received_transactions: Mapped[list[Transaction]] = relationship(
         "Transaction",
         back_populates="receiver",
         foreign_keys="Transaction.receiver_id",
@@ -110,7 +133,7 @@ class Transaction(Base):
     )
 
 
-# for create and drop the tables in postgres db
+###########################################################################
 
 
 async def create_tables():

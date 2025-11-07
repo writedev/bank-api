@@ -55,7 +55,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 async def auth_current_user(
     token: Annotated[str, Depends(oauth2_scheme)], db: AsyncSession = Depends(get_db)
 ):
-    """Authenticates a user by email.Return a User object."""
+    """Authenticates a user by email. Return a User object."""
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -107,7 +107,7 @@ async def auth_required(
     return True
 
 
-@router.post("/create_account")
+@router.post("/create")
 async def create_account(content: CreateUserModel, db: AsyncSession = Depends(get_db)):
 
     password_hash = get_password_hash(password=content.password)
@@ -133,6 +133,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
         return False
 
     if not verify_password(password, user.hashed_password):
+        print("bad")
         return False
 
     return user
@@ -145,8 +146,8 @@ async def login_for_access_token(
 ) -> Token:
     """Create a JWT token and return it."""
 
-    user = authenticate_user(db, content.email, content.password)
-    if not user:
+    user = await authenticate_user(db, content.email, content.password)
+    if user == False:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -157,7 +158,11 @@ async def login_for_access_token(
     access_token = create_access_token(
         data={"sub": content.email}, expires_delta=access_token_expires
     )
-    return Token(access_token=access_token, token_type="bearer")
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=access_token_expires.seconds,
+    )
 
 
 @router.get("/login")

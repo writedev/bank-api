@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import Depends
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import auth_current_user
 from core.db import get_db
+from core.models import CreateBankAccount
 from core.tables import BankAccount, User
 
 router = APIRouter(
@@ -19,14 +21,24 @@ router = APIRouter(
 
 @router.post("/create")
 async def create_bank_account(
+    content: CreateBankAccount,
     current_user: Annotated[User, Depends(auth_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
+    if content.name is None:
+        name = f"{current_user.first_name}-{current_user.last_name}--{datetime.now().date()}--{datetime.now().microsecond}"
+
+    else:
+        name = content.name
+
     async with db.begin():
-        bank_account = BankAccount(owner_id=current_user.id)
+
+        bank_account = BankAccount(owner_id=current_user.id, name=name)
         db.add(bank_account)
 
-    return JSONResponse(content={"id": bank_account.id}, status_code=201)
+    return JSONResponse(
+        content={"id": bank_account.id, "name": bank_account.name}, status_code=201
+    )
 
 
 @router.get("/list")
@@ -47,7 +59,11 @@ async def list_bank_accounts(
 
     for bank_account in bank_accounts:
         bank_accounts_json.append(
-            {"id": bank_account.id, "balance": bank_account.balance}
+            {
+                "id": bank_account.id,
+                "name": bank_account.name,
+                "balance": bank_account.balance,
+            }
         )
 
     return JSONResponse(content={"bank_accounts": bank_accounts_json}, status_code=200)
