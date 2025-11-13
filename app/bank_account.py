@@ -5,6 +5,7 @@ from fastapi import Depends
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import auth_current_user
@@ -30,11 +31,15 @@ async def create_bank_account(
 
     else:
         name = content.name
+    try:
+        async with db.begin():
 
-    async with db.begin():
-
-        bank_account = BankAccount(owner_id=current_user.id, name=name)
-        db.add(bank_account)
+            bank_account = BankAccount(owner_id=current_user.id, name=name)
+            db.add(bank_account)
+    except IntegrityError:
+        return JSONResponse(
+            content={"message": "Bank account already exists"}, status_code=400
+        )
 
     return JSONResponse(
         content={"id": bank_account.id, "name": bank_account.name}, status_code=201
@@ -63,6 +68,7 @@ async def list_bank_accounts(
                 "id": bank_account.id,
                 "name": bank_account.name,
                 "balance": bank_account.balance,
+                "created_at": bank_account.created_at.strftime("%Y-%m-%d--%H:%M:%S"),
             }
         )
 

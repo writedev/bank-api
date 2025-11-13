@@ -10,6 +10,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from pwdlib import PasswordHash
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from core.db import AsyncSession, get_db
 from core.models import CreateUserModel, LoginModel, Token, TokenData
@@ -111,14 +112,17 @@ async def auth_required(
 async def create_account(content: CreateUserModel, db: AsyncSession = Depends(get_db)):
 
     password_hash = get_password_hash(password=content.password)
-    async with db.begin():
-        user = User(
-            first_name=content.first_name,
-            last_name=content.last_name,
-            email=content.email,
-            hashed_password=password_hash,
-        )
-        db.add(user)
+    try:
+        async with db.begin():
+            user = User(
+                first_name=content.first_name,
+                last_name=content.last_name,
+                email=content.email,
+                hashed_password=password_hash,
+            )
+            db.add(user)
+    except IntegrityError:
+        return JSONResponse(content={"message": "User already exists"}, status_code=400)
 
     return JSONResponse(content={"id": user.id}, status_code=201)
 

@@ -103,9 +103,11 @@ class Transaction(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4, init=False)
 
-    sender_id: Mapped[int] = mapped_column(ForeignKey("bank_accounts.id"), default=None)
-    receiver_id: Mapped[int] = mapped_column(
-        ForeignKey("bank_accounts.id"), default=None
+    sender_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("bank_accounts.id"), default=None, nullable=False
+    )
+    receiver_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("bank_accounts.id"), default=None, nullable=False
     )
 
     amount: Mapped[float] = mapped_column(nullable=False, default=None)
