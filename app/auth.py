@@ -145,12 +145,12 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
 
 @router.post("/token")
 async def login_for_access_token(
-    content: LoginModel,
+    content: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: AsyncSession = Depends(get_db),
 ) -> Token:
     """Create a JWT token and return it."""
 
-    user = await authenticate_user(db, content.email, content.password)
+    user = await authenticate_user(db, content.username, content.password)
     if user == False:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -160,7 +160,7 @@ async def login_for_access_token(
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": content.email}, expires_delta=access_token_expires
+        data={"sub": content.username}, expires_delta=access_token_expires
     )
     return Token(
         access_token=access_token,
